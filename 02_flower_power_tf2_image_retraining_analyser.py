@@ -1,11 +1,18 @@
+import os
+import glob
+## tells Tensorflow not to use any CUDA devices !
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-import tensorflow_hub as hub
-import itertools
-import os
 import matplotlib.pylab as plt
 import numpy as np
 from golib import utils as u
+
+# set the levels of messages we want from Tensorflow backend
+#  0| DEBUG, 1| INFO,2| WARNING,3| ERROR
+# tf.get_logger().setLevel('WARNING')
+# tf.autograph.set_verbosity(2)
 
 u.display_versions()
 u.is_gpu_available(True)
@@ -15,51 +22,21 @@ handle_base, pixels = module_selection
 MODULE_HANDLE = "https://tfhub.dev/google/imagenet/{}/feature_vector/4".format(handle_base)
 IMAGE_SIZE = (pixels, pixels)
 print("Using {} with input size {}".format(MODULE_HANDLE, IMAGE_SIZE))
+classes = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
 
-BATCH_SIZE = 32
+print("### List of possible categories :")
+for class_index, class_string in enumerate(classes, start=0):
+    print("[{i}]\t{n}".format(i=class_index, n=class_string))
 
-data_dir = tf.keras.utils.get_file(
-    'flower_photos',
-    'https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz',
-    untar=True)
-
-datagen_kwargs = dict(rescale=1. / 255, validation_split=.20)
-dataflow_kwargs = dict(target_size=IMAGE_SIZE, batch_size=BATCH_SIZE,
-                       interpolation="bilinear")
-
-valid_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-    **datagen_kwargs)
-valid_generator = valid_datagen.flow_from_directory(
-    data_dir, subset="validation", shuffle=False, **dataflow_kwargs)
-
-
-def get_class_string_from_index(index):
-    for class_string, class_index in valid_generator.class_indices.items():
-        if class_index == index:
-            return class_string
-
-saved_model_path = "model/saved_flowers_model"
+saved_model_path = "model/saved_flowers_model_retraining"
 print("### Now will load model from {m}".format(m=saved_model_path))
 model = load_model(saved_model_path)
 
-print("### Now trying model.predict with a brand new image !!")
-test_image = tf.keras.preprocessing.image.load_img('test/tulip/tulip01.jpg',
-                                                   target_size=IMAGE_SIZE,
-                                                   interpolation='bilinear')
-print("### check test image shape : {s}".format(s=np.shape(test_image)))
-plt.imshow(test_image)
-plt.show()
-test_prediction_scores = model.predict(np.expand_dims(test_image, axis=0))
-test_predicted_index = np.argmax(test_prediction_scores)
-print("### Predicted label for tulip01 is ...: " + get_class_string_from_index(test_predicted_index))
+print("### Now trying model.predict with a brand new images !!")
+test_images = []
+for i in glob.glob('test/*.jpg'):
+    test_images.append(i)
 
-print("### Now trying model.predict with a brand new image !!")
-test_image02 = tf.keras.preprocessing.image.load_img('test/tulip/tulip02.jpg',
-                                                     target_size=IMAGE_SIZE,
-                                                     interpolation='bilinear')
-print("### check test image shape : {s}".format(s=np.shape(test_image02)))
-plt.imshow(test_image02)
-plt.show()
-test_prediction_scores02 = model.predict(np.expand_dims(test_image02, axis=0))
-test_predicted_index02 = np.argmax(test_prediction_scores02)
-print("### Predicted label for tulip02 is ...: " + get_class_string_from_index(test_predicted_index02))
+test_images.sort()
+for f in test_images:
+    u.get_prediction(f, model, classes, IMAGE_SIZE)

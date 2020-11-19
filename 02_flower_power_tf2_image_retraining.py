@@ -1,7 +1,9 @@
+import os
+import glob
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 import tensorflow_hub as hub
-import itertools
-import os
 import matplotlib.pylab as plt
 import numpy as np
 from golib import utils as u
@@ -32,7 +34,7 @@ valid_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
 valid_generator = valid_datagen.flow_from_directory(
     data_dir, subset="validation", shuffle=False, **dataflow_kwargs)
 
-do_data_augmentation = False
+do_data_augmentation = True
 if do_data_augmentation:
     train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
         rotation_range=40,
@@ -72,7 +74,7 @@ hist = model.fit(
     epochs=5, steps_per_epoch=steps_per_epoch,
     validation_data=valid_generator,
     validation_steps=validation_steps).history
-print("### Training the model")
+
 plt.figure()
 plt.ylabel("Loss (training and validation)")
 plt.xlabel("Training Steps")
@@ -94,6 +96,13 @@ def get_class_string_from_index(index):
             return class_string
 
 
+def get_categories():
+    categories = []
+    for class_string, class_index in valid_generator.class_indices.items():
+        categories.append(class_string)
+    return categories
+
+
 x, y = next(valid_generator)
 image = x[0, :, :, :]
 true_index = np.argmax(y[0])
@@ -107,27 +116,11 @@ predicted_index = np.argmax(prediction_scores)
 print("### True label: " + get_class_string_from_index(true_index))
 print("### Predicted label: " + get_class_string_from_index(predicted_index))
 
-saved_model_path = "model/saved_flowers_model"
+saved_model_path = "model/saved_flowers_model_retraining"
+print("### Now will save model to {m}".format(m=saved_model_path))
 tf.saved_model.save(model, saved_model_path)
 
-print("### Now trying model.predict with a brand new image !!")
-test_image = tf.keras.preprocessing.image.load_img('test/tulip/tulip01.jpg',
-                                                   target_size=IMAGE_SIZE,
-                                                   interpolation='bilinear')
-print("### check test image shape : {s}".format(s=np.shape(test_image)))
-plt.imshow(test_image)
-plt.show()
-test_prediction_scores = model.predict(np.expand_dims(test_image, axis=0))
-test_predicted_index = np.argmax(test_prediction_scores)
-print("### Predicted label for tulip01 is ...: " + get_class_string_from_index(test_predicted_index))
 
-print("### Now trying model.predict with a brand new image !!")
-test_image02 = tf.keras.preprocessing.image.load_img('test/tulip/tulip02.jpg',
-                                                   target_size=IMAGE_SIZE,
-                                                   interpolation='bilinear')
-print("### check test image shape : {s}".format(s=np.shape(test_image02)))
-plt.imshow(test_image02)
-plt.show()
-test_prediction_scores02 = model.predict(np.expand_dims(test_image02, axis=0))
-test_predicted_index02 = np.argmax(test_prediction_scores02)
-print("### Predicted label for tulip02 is ...: " + get_class_string_from_index(test_predicted_index02))
+print("### Now trying model.predict with a brand new images (not in the original data) !")
+for i in glob.glob('test/*.jpg'):
+    u.get_prediction(i, model, get_categories(), IMAGE_SIZE)

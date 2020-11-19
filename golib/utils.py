@@ -29,3 +29,27 @@ def is_gpu_available(verbose: bool = False):
         else:
             print("### GPU is NOT AVAILABLE")
             return False
+
+
+def get_prediction(image_path, model, classes, image_size):
+    test_image = tf.keras.preprocessing.image.load_img(image_path,
+                                                       target_size=image_size,
+                                                       interpolation='bilinear')
+    # print("### check test image shape : {s}".format(s=np.shape(test_image)))
+    # plt.imshow(test_image)
+    # plt.show()
+    test_prediction_scores = model.predict(np.expand_dims(test_image, axis=0))
+    prediction = tf.nn.softmax(test_prediction_scores).numpy()[0]
+    test_predicted_index = np.argmax(test_prediction_scores)
+    iterator = np.nditer(prediction,  flags=['f_index'])
+    print("\n### %%% Predictions for {} ###".format(image_path))
+    for i in iterator:
+        print("{:10} \twith a {:>.2f} percent confidence".format(classes[iterator.index], i * 100))
+
+    if image_path.lower().find(classes[test_predicted_index]) > -1:
+        print("### ✔ ✔  Predicted label for {:10} is CORRECT : {:10} {:2.2f} percent confidence".format(
+            image_path, classes[test_predicted_index], (100 * prediction[test_predicted_index])))
+    else:
+        print("### ⚠ ⚠  Predicted label for {:10} is WRONG : {:10} {:2.2f} percent confidence".format(
+            image_path, classes[test_predicted_index], (100 * prediction[test_predicted_index])))
+    return classes[test_predicted_index]
