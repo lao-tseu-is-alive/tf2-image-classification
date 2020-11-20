@@ -22,7 +22,7 @@ handle_base, pixels = module_selection
 MODULE_HANDLE = "https://tfhub.dev/google/imagenet/{}/feature_vector/4".format(handle_base)
 IMAGE_SIZE = (pixels, pixels)
 print("Using {} with input size {}".format(MODULE_HANDLE, IMAGE_SIZE))
-classes = ['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips']
+classes = ['daisy', 'dandelion', 'rose', 'sunflowers', 'tulip']
 
 print("### List of possible categories :")
 for class_index, class_string in enumerate(classes, start=0):
